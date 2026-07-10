@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Kraków ⇄ Olkusz — rozkład jazdy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1b2027;
+    --panel-2:#232a33;
+    --border:#313a46;
+    --amber:#ffb020;
+    --teal:#57d8c4;
+    --rose:#ff6b6b;
+    --text:#eef1f5;
+    --text-dim:#8b96a5;
+    --text-faint:#5c6774;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:18px 16px 64px;}
+
+  header{padding:6px 2px 18px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin:0 0 6px;
+  }
+  h1{font-size:28px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;}
+  .sub{color:var(--text-dim);font-size:14px;margin:0;line-height:1.5;}
+  .clock{font-family:'JetBrains Mono',monospace;color:var(--text-faint);font-size:12px;margin-top:10px;}
+  .clock b{color:var(--amber);font-weight:500;}
+
+  .direction{
+    display:flex;background:var(--panel);border:1px solid var(--border);
+    border-radius:var(--radius);padding:4px;gap:4px;margin-bottom:10px;
+  }
+  .direction button{
+    flex:1;border:none;background:transparent;color:var(--text-dim);
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+    padding:12px 8px;border-radius:10px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .direction button.active{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border);}
+  .direction button.active .arrow{color:var(--teal);}
+
+  .days{display:flex;gap:6px;overflow-x:auto;margin-bottom:18px;padding-bottom:2px;}
+  .days button{
+    flex:0 0 auto;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);
+    font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:500;
+    padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  }
+  .days button.active{background:var(--amber);border-color:var(--amber);color:#1a1300;font-weight:700;}
+
+  .board{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 14px 8px;margin-bottom:22px;position:relative;overflow:hidden;
+  }
+  .board::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--amber),transparent 70%);opacity:.6;
+  }
+  .board-title{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-faint);margin:0 0 10px;
+  }
+  .dep-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid var(--border);}
+  .dep-row:first-of-type{border-top:none;}
+  .dep-time{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px;
+    color:var(--amber);min-width:64px;letter-spacing:.02em;
+  }
+  .dep-info{flex:1;min-width:0;}
+  .dep-carrier{font-size:14px;font-weight:600;color:var(--text);}
+  .dep-stop{font-size:12px;color:var(--text-dim);margin-top:1px;}
+  .dep-countdown{
+    font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+    color:var(--text-dim);text-align:right;min-width:64px;
+  }
+  .dep-countdown.soon{color:var(--rose);}
+  .empty-board{color:var(--text-dim);font-size:14px;padding:18px 4px 22px;}
+
+  .section-label{display:flex;align-items:center;gap:10px;margin:26px 0 12px;}
+  .section-label span{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-faint);white-space:nowrap;
+  }
+  .section-label::after{content:"";flex:1;height:1px;background:var(--border);}
+
+  .carrier{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+  .carrier-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;cursor:pointer;}
+  .carrier-name{font-weight:600;font-size:15px;}
+  .carrier-meta{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .chev{color:var(--text-faint);transition:transform .2s;flex:0 0 auto;}
+  .carrier.open .chev{transform:rotate(180deg);}
+  .carrier-body{display:none;padding:0 16px 16px;border-top:1px solid var(--border);}
+  .carrier.open .carrier-body{display:block;}
+  .carrier-detail{font-size:13px;color:var(--text-dim);padding:12px 0 4px;line-height:1.5;}
+  .carrier-detail b{color:var(--text);font-weight:600;}
+  .timetable{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;}
+  .tt-col h4{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--teal);margin:0 0 6px;font-weight:500;
+  }
+  .tt-col ul{list-style:none;margin:0;padding:0;}
+  .tt-col li{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);padding:2px 0;}
+  .tt-col li sup{color:var(--amber);font-size:9px;margin-left:2px;}
+  .tt-col .none{color:var(--text-faint);font-style:normal;}
+  .carrier-note{font-size:12px;color:var(--text-faint);margin-top:12px;padding-top:10px;border-top:1px solid var(--border);line-height:1.5;}
+
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--text-faint);font-size:12px;line-height:1.6;}
+
+  @media (max-width:380px){
+    .timetable{grid-template-columns:1fr 1fr;}
+    .tt-col:nth-child(3){grid-column:1 / -1;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Rozkład jazdy</p>
+    <h1>Kraków ⇄ Olkusz</h1>
+    <p class="sub">JKA-BUS · KAYATRANS · Sioła Trans · Opalski Bus/Raf-Bus · Koczwara/Sioła/TransBek · Koleje Małopolskie MLD · SIGMA BUS</p>
+    <p class="clock" id="clock"></p>
+  </header>
+
+  <div class="direction" id="directionToggle">
+    <button class="active" data-dir="toOlkusz">Kraków <span class="arrow">→</span> Olkusz</button>
+    <button data-dir="toKrakow">Olkusz <span class="arrow">→</span> Kraków</button>
+  </div>
+
+  <div class="days" id="dayToggle">
+    <button data-day="today" class="active">Dziś</button>
+    <button data-day="tomorrow">Jutro</button>
+    <button data-day="weekday">Pon–pt</button>
+    <button data-day="saturday">Sobota</button>
+    <button data-day="sunday">Niedziela</button>
+  </div>
+
+  <div class="board" id="board">
+    <p class="board-title" id="boardTitle">Najbliższe odjazdy</p>
+    <div id="boardList"></div>
+  </div>
+
+  <div class="section-label"><span>Pełny rozkład — wszyscy przewoźnicy</span></div>
+  <div id="carrierList"></div>
+
+  <footer>
+    Dane rozkładowe na podstawie informacji przewoźników, stan na 09.07.2026 — mogą się zmieniać w święta i długie weekendy, warto to zweryfikować u przewoźnika przed podróżą.
+  </footer>
+
+</div>
+
+<script>
+const carriers = [
+  {
+    id:'jka', name:'JKA-BUS', phone:'502 264 274', duration:'1 godz. 6 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Supersam ZKG KM', route:'przez Azory',
+    schedule:{
+      toOlkusz:{weekday:["7:54","10:34","13:14","15:54","18:34"], saturday:["7:20","9:50","12:20","14:50","17:20","19:50"], sunday:[]},
+      toKrakow:{weekday:["6:34","9:14","11:54","14:34","17:14"], saturday:["6:05","8:35","11:05","13:35","16:05","18:35"], sunday:[]}
+    }
+  },
+  {
+    id:'kaya', name:'KAYATRANS', phone:'519 101 454', duration:'59 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Supersam ZKG KM', route:'przez Azory',
+    schedule:{
+      toOlkusz:{weekday:["6:50","7:14","9:34","9:54","12:34","14:54","15:14","17:54","20:30"], saturday:["7:50","10:20","12:50","15:20","17:50","20:30"], sunday:["7:45","10:15","12:45","15:15","17:45","20:30"]},
+      toKrakow:{weekday:["5:34","5:54","8:14","8:34","11:14","13:34","13:54","16:34","19:14"], saturday:["6:35","9:05","11:35","14:05","16:35","19:15"], sunday:["6:30","9:00","11:30","14:00","16:30","19:15"]}
+    }
+  },
+  {
+    id:'siola', name:'Sioła Trans', phone:'509 949 499', duration:'1 godz. 2 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Supersam ZKG KM', route:'przez Azory',
+    schedule:{
+      toOlkusz:{weekday:["5:40","8:17","8:37","10:55","11:17","13:35","13:57","16:15","16:37","18:55","19:20"], saturday:["8:20","10:50","13:20","15:50","18:20","21:05"], sunday:["6:55","9:25","11:55","14:25","16:55","19:30"]},
+      toKrakow:{weekday:["4:30","6:55","7:17","9:35","9:57","12:15","12:37","14:57","15:17","17:35","18:00"], saturday:["7:05","9:35","12:05","14:35","17:05","19:40"], sunday:["5:40","8:10","10:40","13:10","15:40","18:15"]}
+    }
+  },
+  {
+    id:'opalski', name:'Opalski Bus / Raf-Bus', phone:null, duration:'1 godz. 9 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Supersam ZKG KM', route:'przez Azory',
+    note:'Kursy oznaczone * wykonuje Opalski Bus w dni nieparzyste, a Raf-Bus w dni parzyste. Kursy oznaczone # wykonuje w tygodnie parzyste Raf-Bus.',
+    schedule:{
+      toOlkusz:{weekday:["7:34|*","10:14|*","12:54|*","15:34|*","18:14|*","20:55|*"], saturday:["6:50|#","9:20|#","11:50|#","14:20|#","16:50|#","19:20|#"], sunday:[]},
+      toKrakow:{weekday:["6:14|*","8:54|*","11:34|*","14:14|*","16:54|*","19:34|*"], saturday:["5:35|#","8:05|#","10:35|#","13:05|#","15:35|#","18:05|#"], sunday:[]}
+    }
+  },
+  {
+    id:'koczwara', name:'Koczwara / Sioła / TransBek', phone:null, duration:'1 godz. 16 min',
+    stopFrom:'Kraków ul. Wita Stwosza (parking)', stopTo:'Olkusz Dworzec PKP', route:'przez Skałę',
+    note:'Kursy oznaczone „NK” odjeżdżają z przystanku Nowy Kleparz, pozostałe z ul. Wita Stwosza (parking).',
+    schedule:{
+      toOlkusz:{weekday:["5:55","6:41","7:55","8:55|NK","11:10","12:00|NK","12:45","14:18|NK","14:55|NK","15:57","17:25","18:02|NK","19:00"], saturday:["6:30","9:35","14:00","16:55"], sunday:["7:10"]},
+      toKrakow:{weekday:["4:40","5:10","6:25","7:30","9:25","10:25","12:45","13:30","14:24","15:52","16:35","17:30"], saturday:["5:15","7:45","12:40","15:25"], sunday:["5:25"]}
+    }
+  },
+  {
+    id:'mld', name:'Koleje Małopolskie MLD', phone:'12 288 82 00', duration:'A12: 2 godz. 3 min · A13: 1 godz. 12 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Dworzec PKS', route:'A12 przez Trzyciąż / A13 przez Skałę',
+    note:'Etykiety A12 / A13 wskazują linię — A12 jedzie przez Trzyciąż, A13 przez Skałę.',
+    schedule:{
+      toOlkusz:{
+        weekday:["5:30|A12","6:45|A13","7:45|A12","10:40|A12","11:40|A13","14:30|A12","14:45|A13","15:30|A12","16:30|A12","19:20|A12","20:35|A13","22:30|A12"],
+        saturday:["5:30|A12","6:45|A13","7:30|A12","10:15|A13","12:30|A12","13:30|A13","14:30|A12","16:30|A12","18:30|A12","20:35|A13","22:30|A12"],
+        sunday:["6:45|A13","7:30|A12","11:30|A13","14:30|A12","15:30|A13","16:45|A12","19:00|A13","22:30|A12"]
+      },
+      toKrakow:{
+        weekday:["4:00|A13","4:20|A12","5:15|A12","8:20|A12","9:20|A13","11:20|A12","13:20|A12","14:20|A12","16:15|A13","16:30|A12","18:30|A13","19:40|A12"],
+        saturday:["4:00|A13","5:15|A12","7:20|A12","8:20|A13","10:20|A12","11:30|A12","14:20|A12","15:20|A13","16:20|A12","18:30|A13","19:40|A12"],
+        sunday:["5:20|A12","8:20|A13","10:20|A12","13:20|A13","14:20|A12","17:20|A13","19:20|A12","20:20|A13"]
+      }
+    }
+  },
+  {
+    id:'sigma', name:'SIGMA BUS', phone:null, duration:'1 godz. 2 min',
+    stopFrom:'Kraków Dworzec MDA', stopTo:'Olkusz Supersam ZKG KM', route:'przez Azory',
+    note:'Kurs oznaczony * jedzie przez Olkusz Osiedle Młodych / Kraków AGH-Aleje.',
+    schedule:{
+      toOlkusz:{weekday:["6:15","6:34","9:14","11:54","14:17","14:34","16:57","17:14","19:55"], saturday:["6:20","8:50","11:20","13:50","16:20","18:50","21:40"], sunday:["6:00","8:35","11:05","13:35","16:05","18:35"]},
+      toKrakow:{weekday:["4:50|*","5:14","7:37","7:57","10:34","13:14","15:37","15:54","18:34"], saturday:["4:50|*","7:35","10:05","12:35","15:05","20:20"], sunday:["4:50|*","7:20","9:50","12:20","14:50","17:20"]}
+    }
+  }
+];
+
+let state = { dir:'toOlkusz', day:'today' };
+
+function parseEntry(e){
+  const [t, tag] = e.split('|');
+  const [h,m] = t.split(':').map(Number);
+  return { label:`${h}:${String(m).padStart(2,'0')}`, minutes:h*60+m, tag:tag||null };
+}
+function dayTypeOf(date){
+  const d = date.getDay();
+  if(d===0) return 'sunday';
+  if(d===6) return 'saturday';
+  return 'weekday';
+}
+function dayTypeLabel(dt){
+  return dt==='weekday' ? 'poniedziałek–piątek' : dt==='saturday' ? 'sobota' : 'niedziela';
+}
+function fmtClock(date){
+  const days=['niedzielę','poniedziałek','wtorek','środę','czwartek','piątek','sobotę'];
+  const dd=String(date.getDate()).padStart(2,'0');
+  const mm=String(date.getMonth()+1).padStart(2,'0');
+  const hh=String(date.getHours()).padStart(2,'0');
+  const mi=String(date.getMinutes()).padStart(2,'0');
+  return `${dd}.${mm}.${date.getFullYear()}, ${hh}:${mi} · ${days[date.getDay()]}`;
+}
+function countdownLabel(diffMin){
+  if(diffMin < 1) return 'odjeżdża';
+  if(diffMin < 60) return `za ${diffMin} min`;
+  const h = Math.floor(diffMin/60), m = diffMin%60;
+  return m===0 ? `za ${h} godz.` : `za ${h} godz. ${m} min`;
+}
+
+document.getElementById('directionToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  state.dir = btn.dataset.dir;
+  [...document.querySelectorAll('#directionToggle button')].forEach(b=>b.classList.toggle('active', b===btn));
+  render();
+});
+document.getElementById('dayToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  state.day = btn.dataset.day;
+  [...document.querySelectorAll('#dayToggle button')].forEach(b=>b.classList.toggle('active', b===btn));
+  render();
+});
+
+function renderBoard(){
+  const boardTitle = document.getElementById('boardTitle');
+  const list = document.getElementById('boardList');
+  list.innerHTML = '';
+
+  const isLive = state.day==='today' || state.day==='tomorrow';
+  let refDate = new Date();
+  if(state.day==='tomorrow') refDate.setDate(refDate.getDate()+1);
+  const dt = isLive ? dayTypeOf(refDate) : state.day;
+
+  boardTitle.textContent = isLive
+    ? (state.day==='today' ? 'Najbliższe odjazdy — dziś' : `Odjazdy — jutro (${dayTypeLabel(dt)})`)
+    : `Pełny rozkład — ${dayTypeLabel(dt)}`;
+
+  const now = new Date();
+  const nowMinutes = now.getHours()*60 + now.getMinutes();
+
+  let entries = [];
+  carriers.forEach(c=>{
+    const times = c.schedule[state.dir][dt] || [];
+    times.forEach(raw=>{
+      const p = parseEntry(raw);
+      entries.push({...p, carrier:c.name, stop: state.dir==='toOlkusz' ? c.stopFrom : c.stopTo});
+    });
+  });
+  entries.sort((a,b)=>a.minutes-b.minutes);
+
+  if(state.day==='today'){
+    entries = entries.filter(e=>e.minutes >= nowMinutes - 1);
+  }
+
+  if(entries.length===0){
+    list.innerHTML = `<div class="empty-board">Brak zaplanowanych kursów w tym dniu na wybranej trasie.</div>`;
+    return;
+  }
+
+  const shown = (state.day==='today') ? entries.slice(0,6) : entries.slice(0,8);
+
+  shown.forEach(e=>{
+    const diff = e.minutes - nowMinutes;
+    const showCountdown = state.day==='today';
+    const soon = showCountdown && diff <= 15;
+    const row = document.createElement('div');
+    row.className = 'dep-row';
+    row.innerHTML = `
+      <div class="dep-time">${e.label}${e.tag ? `<sup>${e.tag}</sup>` : ''}</div>
+      <div class="dep-info">
+        <div class="dep-carrier">${e.carrier}</div>
+        <div class="dep-stop">${e.stop}</div>
+      </div>
+      ${showCountdown ? `<div class="dep-countdown ${soon?'soon':''}">${countdownLabel(diff)}</div>` : ''}
+    `;
+    list.appendChild(row);
+  });
+}
+
+function ttColumn(label, arr){
+  if(!arr || arr.length===0){
+    return `<div class="tt-col"><h4>${label}</h4><ul><li class="none">—</li></ul></div>`;
+  }
+  const items = arr.map(raw=>{
+    const p = parseEntry(raw);
+    return `<li>${p.label}${p.tag?`<sup>${p.tag}</sup>`:''}</li>`;
+  }).join('');
+  return `<div class="tt-col"><h4>${label}</h4><ul>${items}</ul></div>`;
+}
+
+function renderCarriers(){
+  const container = document.getElementById('carrierList');
+  container.innerHTML = '';
+  const dirLabel = state.dir==='toOlkusz' ? 'Kraków → Olkusz' : 'Olkusz → Kraków';
+
+  carriers.forEach(c=>{
+    const sched = c.schedule[state.dir];
+    const card = document.createElement('div');
+    card.className = 'carrier';
+    card.innerHTML = `
+      <div class="carrier-head">
+        <div>
+          <div class="carrier-name">${c.name}</div>
+          <div class="carrier-meta">${dirLabel} · ${c.route} · ${c.duration}</div>
+        </div>
+        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="carrier-body">
+        <div class="carrier-detail">
+          <div><b>Przystanek odjazdu:</b> ${state.dir==='toOlkusz' ? c.stopFrom : c.stopTo}</div>
+          ${c.phone ? `<div><b>Telefon:</b> ${c.phone}</div>` : ''}
+        </div>
+        <div class="timetable">
+          ${ttColumn('Pon–pt', sched.weekday)}
+          ${ttColumn('Sobota', sched.saturday)}
+          ${ttColumn('Niedziela', sched.sunday)}
+        </div>
+        ${c.note ? `<div class="carrier-note">${c.note}</div>` : ''}
+      </div>
+    `;
+    card.querySelector('.carrier-head').addEventListener('click', ()=>{
+      card.classList.toggle('open');
+    });
+    container.appendChild(card);
+  });
+}
+
+function tickClock(){
+  document.getElementById('clock').innerHTML = `<b>${fmtClock(new Date())}</b>`;
+}
+
+function render(){
+  renderBoard();
+  renderCarriers();
+}
+
+tickClock();
+render();
+setInterval(()=>{ tickClock(); if(state.day==='today') renderBoard(); }, 30000);
+</script>
+</body>
+</html>
